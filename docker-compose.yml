@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
     ports:
-      - "3000:3000"
+      - "3009:3000"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -23,8 +23,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VUE_APP_BASE_API=http://localhost:3000
-      - VUE_APP_WS_API=ws://localhost:3000
+      - VUE_APP_BASE_API=http://10.10.10.2:3009
+      - VUE_APP_WS_API=ws://10.10.10.2:3009
 
 volumes:
   recordings:
