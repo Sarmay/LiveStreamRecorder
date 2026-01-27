@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  live-recorder:
+    build: .
+    container_name: live-recorder
+    ports:
+      - "3000:3000"
+    volumes:
+      - recordings:/app/recordings
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  recordings:
