@@ -1,8 +1,4 @@
-FROM node:18-bullseye-slim
-
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -15,4 +11,4 @@ EXPOSE 3000
 
 VOLUME ["/app/recordings"]
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]

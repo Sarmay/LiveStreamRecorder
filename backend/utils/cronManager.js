@@ -1,11 +1,11 @@
 const { CronJob } = require('cron');
-const { v4: uuidv4 } = require('uuid');
 const moment = require('moment');
 const recordingManager = require('./recordingManager');
 
 const schedules = new Map();
 
-function addSchedule (config, ws) {
+async function addSchedule (config, ws) {
+  const { v4: uuidv4 } = await import('uuid');
   const id = uuidv4();
 
   const startTime = moment(config.startTime);
@@ -21,9 +21,9 @@ function addSchedule (config, ws) {
     const cronTime = `${startTime.second()} ${startTime.minute()} ${startTime.hour()} * * ${startTime.day()}`;
     console.log('创建带有cron时间的重复作业:', cronTime);
 
-    job = new CronJob(cronTime, () => {
+    job = new CronJob(cronTime, async () => {
       console.log('重复作业触发:', id);
-      const recording = recordingManager.startRecording({
+      const recording = await recordingManager.startRecording({
         url: config.url,
         name: config.name
       }, ws);
@@ -40,7 +40,7 @@ function addSchedule (config, ws) {
     // 如果任务在过期时间之前，立即运行
     if (isPast) {
       console.log('任务立即运行:', id);
-      const recording = recordingManager.startRecording({
+      const recording = await recordingManager.startRecording({
         url: config.url,
         name: config.name
       }, ws);
@@ -60,9 +60,9 @@ function addSchedule (config, ws) {
     console.log('任务延迟时间:', delay, '毫秒');
 
     if (delay > 0) {
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log('任务触发:', id);
-        const recording = recordingManager.startRecording({
+        const recording = await recordingManager.startRecording({
           url: config.url,
           name: config.name
         }, ws);
@@ -77,7 +77,7 @@ function addSchedule (config, ws) {
       }, delay);
     } else {
       console.log('任务立即运行:', id);
-      const recording = recordingManager.startRecording({
+      const recording = await recordingManager.startRecording({
         url: config.url,
         name: config.name
       }, ws);

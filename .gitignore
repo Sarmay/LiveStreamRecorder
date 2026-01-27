@@ -5,3 +5,4 @@ frontend/dist/
 backend/recordings/
 .DS_Store
 *.log
+yarn.lock

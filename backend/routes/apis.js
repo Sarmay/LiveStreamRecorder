@@ -46,10 +46,10 @@ router.ws("/ws", (ws, req) => {
 });
 
 // start-recording
-router.post('/start-recording', function (req, res, next) {
+router.post('/start-recording', async function (req, res, next) {
   const { url, name } = req.body;
   if (wxClient) {
-    recordingManager.startRecording({ url, name }, wxClient);
+    await recordingManager.startRecording({ url, name }, wxClient);
     res.success(null, 'Recording started');
   } else {
     res.json({
@@ -93,9 +93,9 @@ router.post('/remove-completed-recordings', (req, res) => {
 
 
 
-router.post('/add-schedule', (req, res) => {
+router.post('/add-schedule', async (req, res) => {
   if (wxClient) {
-    const schedule = cronManager.addSchedule(req.body, wxClient);
+    const schedule = await cronManager.addSchedule(req.body, wxClient);
     res.success(schedule);
   } else {
     res.json({

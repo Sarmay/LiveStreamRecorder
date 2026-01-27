@@ -2,7 +2,6 @@ const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
-const { v4: uuidv4 } = require('uuid');
 const moment = require('moment');
 
 const recordingsDir = path.join(__dirname, '../recordings');
@@ -15,8 +14,9 @@ function createRecordingsDir () {
   }
 }
 
-function startRecording (config, ws) {
+async function startRecording (config, ws) {
   createRecordingsDir();
+  const { v4: uuidv4 } = await import('uuid');
   const id = uuidv4();
   const startTime = moment().format('YYYY-MM-DD_HH-mm-ss');
   const filename = `${config.name || 'recording'}_${startTime}.mp4`;
@@ -232,12 +232,12 @@ function getCompletedRecordings () {
     if (filename.endsWith('.mp4')) {
       const filePath = path.join(recordingsDir, filename);
       const stats = fs.statSync(filePath);
-      
+
       // 检查文件是否正在被录制（通过检查是否在recordings Map中）
-      const isRecording = Array.from(recordings.values()).some(rec => 
+      const isRecording = Array.from(recordings.values()).some(rec =>
         rec.outputPath === filePath
       );
-      
+
       // 只添加未在录制中的文件
       if (!isRecording) {
         // 从文件名中提取信息
@@ -281,7 +281,7 @@ function getCompletedRecordings () {
   return completedRecordings;
 }
 
-function removeCompletedRecordings(id){
+function removeCompletedRecordings (id) {
   const filePath = path.join(recordingsDir, `${id}.mp4`);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);

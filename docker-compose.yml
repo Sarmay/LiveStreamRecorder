@@ -1,16 +1,29 @@
-version: '3.8'
-
 services:
-  live-recorder:
-    build: .
-    container_name: live-recorder
-    ports:
-      - "3000:3000"
+  backend:
+    build:
+      context: ./backend
     volumes:
-      - recordings:/app/recordings
-    restart: unless-stopped
+      - ./backend:/app
+      - /app/node_modules
+      - ./recordings:/app/recordings
     environment:
       - NODE_ENV=production
+    command: yarn start
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8088:80"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VUE_APP_BASE_API=http://backend:3000
+      - VUE_APP_WS_API=ws://backend:3000
 
 volumes:
   recordings:
+    driver: local
