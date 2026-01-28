@@ -11,7 +11,7 @@ RUN yarn config set registry https://registry.npmmirror.com && yarn install
 COPY . .
 
 # 3. 执行构建命令
-RUN yarn run build
+RUN yarn lint --fix && yarn run build
 
 # 部署阶段：使用 nginx 镜像
 FROM nginx:alpine as final

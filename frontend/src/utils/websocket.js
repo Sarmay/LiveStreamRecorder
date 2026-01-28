@@ -1,4 +1,4 @@
-import { getWsApi } from '@/utils/env';
+import { getWsApi } from '@/utils/env'
 
 /**
  * Vue2 WebSocket 工具封装

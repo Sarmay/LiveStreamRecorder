@@ -124,7 +124,7 @@
 <script>
 import moment from 'moment'
 import WebSocketClient from '@/utils/websocket'
-import { getBaseApi, getWsApi } from '@/utils/env';
+import { getBaseApi, getWsApi } from '@/utils/env'
 import { getRecordingStatus, startRecording, stopRecording, getCompletedRecordings, removeCompleted, addSchedule, removeSchedule, getSchedules } from '@/api'
 
 export default {

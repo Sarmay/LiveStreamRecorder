@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Message, Loading, MessageBox } from 'element-ui'
 import router from '@/router' // 引入路由，用于登录失效跳转
-import { getBaseApi } from '@/utils/env';
+import { getBaseApi } from '@/utils/env'
 
 // 创建 axios 实例
 const service = axios.create({
