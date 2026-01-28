@@ -124,6 +124,7 @@
 <script>
 import moment from 'moment'
 import WebSocketClient from '@/utils/websocket'
+import { getBaseApi, getWsApi } from '@/utils/env';
 import { getRecordingStatus, startRecording, stopRecording, getCompletedRecordings, removeCompleted, addSchedule, removeSchedule, getSchedules } from '@/api'
 
 export default {
@@ -227,7 +228,7 @@ export default {
     connectWebSocket () {
       // 创建组件内WS实例
       this.ws = new WebSocketClient({
-        url: process.env.VUE_APP_WS_API + '/api/ws',
+        url: getWsApi(),
         heartbeatInterval: 15000,
         // 接收消息
         onMessage: (message) => {
@@ -445,7 +446,7 @@ export default {
     },
     completedWatchHandel (playbackUrl) {
       // 获取当前URL地址
-      const currentUrl = process.env.VUE_APP_BASE_API
+      const currentUrl = getBaseApi()
       this.$router.push({
         path: '/watch',
         query: {

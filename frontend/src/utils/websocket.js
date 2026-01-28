@@ -1,3 +1,5 @@
+import { getWsApi } from '@/utils/env';
+
 /**
  * Vue2 WebSocket 工具封装
  * 支持：自动重连、心跳检测、消息格式化、错误处理、多实例管理
@@ -20,7 +22,7 @@ class WebSocketClient {
   constructor (options = {}) {
     // 默认配置
     this.config = {
-      url: process.env.VUE_APP_WS_API + '/api/ws',
+      url: getWsApi(),
       reconnectTimes: -1, // 最大重连次数，-1为无限重连
       reconnectInterval: 3000, // 重连间隔
       heartbeatInterval: 10000, // 心跳间隔

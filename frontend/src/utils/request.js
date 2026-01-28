@@ -1,10 +1,11 @@
 import axios from 'axios'
 import { Message, Loading, MessageBox } from 'element-ui'
 import router from '@/router' // 引入路由，用于登录失效跳转
+import { getBaseApi } from '@/utils/env';
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: process.env.VUE_APP_BASE_API, // 基础请求地址（从环境变量读取）
+  baseURL: getBaseApi(), // 基础请求地址（从环境变量读取）
   timeout: 10000, // 请求超时时间
   headers: {
     'Content-Type': 'application/json;charset=utf-8' // 默认请求头
