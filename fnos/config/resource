@@ -2,7 +2,7 @@
     "docker-project": {
         "projects": [
             {
-                "name": "App.Docker.LiveStreamRecorder",
+                "name": "livestreamrecorder",
                 "path": "docker"
             }
         ]
