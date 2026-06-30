@@ -200,8 +200,50 @@ GET /api/schedules
 |--------|------|--------|
 | PORT | 服务端口 | 3000 |
 | NODE_ENV | 运行环境 | production |
-| VUE_APP_BASE_API | 前端构建时使用的后端 API 地址 | 当前访问主机的 3009 端口 |
-| VUE_APP_WS_API | 前端构建时使用的 WebSocket 地址 | 当前访问主机的 3009 端口 `/api/ws` |
+| VUE_APP_BASE_API | 前端构建时使用的后端 API 地址，`same-origin` 表示走前端 Nginx 反向代理 | same-origin |
+| VUE_APP_WS_API | 前端构建时使用的 WebSocket 地址，`same-origin` 表示走前端 Nginx 反向代理 | same-origin |
+
+## 飞牛 OS 应用包
+
+项目已内置飞牛 fnOS Docker 应用包目录 `fnos/`，包含：
+
+- `manifest`：应用元信息和入口端口
+- `config/resource`：Docker 项目和录制目录共享
+- `config/privilege`：应用用户权限
+- `cmd/main`：应用中心运行状态检查
+- `app/docker/docker-compose.yaml`：fnOS 上运行的 Docker Compose 配置
+- `app/ui/config`：桌面入口配置
+
+### 本地构建 FPK
+
+先确保已经安装 `fnpack`，然后执行：
+
+```bash
+VERSION=1.0.0 \
+IMAGE_NAMESPACE=ghcr.io/sarmay \
+IMAGE_PREFIX=livestreamrecorder \
+scripts/build-fnos-package.sh
+```
+
+生成的 `.fpk` 文件可在飞牛应用中心手动安装。
+
+### Tag 自动发布
+
+GitHub Actions 已配置在推送 tag 时自动构建：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+流程会自动：
+
+1. 构建并推送后端镜像到 GHCR
+2. 构建并推送前端镜像到 GHCR
+3. 将 tag 版本写入 `fnos/manifest`
+4. 将对应镜像 tag 写入 `fnos/app/docker/docker-compose.yaml`
+5. 使用 `fnpack` 构建 `.fpk`
+6. 将 `.fpk` 上传到 GitHub Release
 
 ## 常见问题
 

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+CONTAINER_NAME="fnos-livestreamrecorder-frontend"
+
+is_docker_running () {
+    docker inspect "$CONTAINER_NAME" 2>/dev/null | grep -q "\"Status\": \"running\","
+}
+
+case "$1" in
+start)
+    # Docker projects are started by App Center from config/resource.
+    exit 0
+    ;;
+stop)
+    # Docker projects are stopped by App Center from config/resource.
+    exit 0
+    ;;
+status)
+    if is_docker_running; then
+        exit 0
+    fi
+    exit 3
+    ;;
+*)
+    exit 1
+    ;;
+esac

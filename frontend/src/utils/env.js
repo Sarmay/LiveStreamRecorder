@@ -4,6 +4,10 @@
  */
 export function getBaseApi () {
   if (process.env.VUE_APP_BASE_API) {
+    if (process.env.VUE_APP_BASE_API === 'same-origin') {
+      return ''
+    }
+
     return process.env.VUE_APP_BASE_API.replace(/\/$/, '')
   }
 
@@ -20,13 +24,18 @@ export function getBaseApi () {
  * 动态生成 WebSocket 基础地址。
  */
 export function getWsApi () {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+
   if (process.env.VUE_APP_WS_API) {
+    if (process.env.VUE_APP_WS_API === 'same-origin') {
+      return `${wsProtocol}//${window.location.host}/api/ws`
+    }
+
     const wsApi = process.env.VUE_APP_WS_API.replace(/\/$/, '')
     return wsApi.endsWith('/api/ws') ? wsApi : `${wsApi}/api/ws`
   }
 
   const host = window.location.hostname
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
   if (process.env.NODE_ENV === 'development') {
     return `${wsProtocol}//${window.location.host}/api/ws`

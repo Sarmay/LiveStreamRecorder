@@ -1,0 +1,111 @@
+name: Release Docker images and fnOS package
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example 1.0.0"
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          OWNER_LC="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          REPO_LC="$(basename "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_NAMESPACE="ghcr.io/${OWNER_LC}"
+          IMAGE_PREFIX="${REPO_LC}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "image_namespace=${IMAGE_NAMESPACE}" >> "$GITHUB_OUTPUT"
+          echo "image_prefix=${IMAGE_PREFIX}" >> "$GITHUB_OUTPUT"
+          echo "backend_image=${IMAGE_NAMESPACE}/${IMAGE_PREFIX}-backend" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=${IMAGE_NAMESPACE}/${IMAGE_PREFIX}-frontend" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.backend_image }}:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            VUE_APP_BASE_API=same-origin
+            VUE_APP_WS_API=same-origin
+          tags: |
+            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.frontend_image }}:latest
+
+      - name: Install fnpack
+        shell: bash
+        run: |
+          curl -L "https://static2.fnnas.com/fnpack/fnpack-1.2.1-linux-amd64" -o fnpack
+          chmod +x fnpack
+          sudo mv fnpack /usr/local/bin/fnpack
+          fnpack --help
+
+      - name: Build fnOS FPK
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          IMAGE_NAMESPACE: ${{ steps.meta.outputs.image_namespace }}
+          IMAGE_PREFIX: ${{ steps.meta.outputs.image_prefix }}
+        run: |
+          scripts/build-fnos-package.sh "$VERSION"
+          mkdir -p dist
+          find . -maxdepth 2 -name "*.fpk" -type f -exec cp {} dist/ \;
+          ls -la dist
+
+      - name: Upload FPK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnos-fpk-${{ steps.meta.outputs.version }}
+          path: dist/*.fpk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.fpk
+          generate_release_notes: true

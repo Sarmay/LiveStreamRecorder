@@ -5,8 +5,6 @@ services:
     ports:
       - "3009:3000"
     volumes:
-      - ./backend:/app
-      - /app/node_modules
       - ./recordings:/app/recordings
     environment:
       - NODE_ENV=production
@@ -16,15 +14,12 @@ services:
     build:
       context: ./frontend
       args:
-        VUE_APP_BASE_API: ${VUE_APP_BASE_API:-}
-        VUE_APP_WS_API: ${VUE_APP_WS_API:-}
+        VUE_APP_BASE_API: ${VUE_APP_BASE_API:-same-origin}
+        VUE_APP_WS_API: ${VUE_APP_WS_API:-same-origin}
     ports:
       - "8088:80"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 volumes:
   recordings:
     driver: local

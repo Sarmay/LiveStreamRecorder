@@ -1,0 +1,13 @@
+{
+    ".url": {
+        "App.Docker.LiveStreamRecorder.Application": {
+            "title": "Live Stream Recorder",
+            "icon": "images/icon_{0}.png",
+            "type": "url",
+            "protocol": "",
+            "port": "38088",
+            "url": "/",
+            "allUsers": true
+        }
+    }
+}

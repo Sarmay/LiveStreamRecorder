@@ -1,0 +1,19 @@
+services:
+  backend:
+    image: __BACKEND_IMAGE__
+    container_name: fnos-livestreamrecorder-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - /var/apps/App.Docker.LiveStreamRecorder/shares/App.Docker.LiveStreamRecorder/recordings:/app/recordings
+
+  frontend:
+    image: __FRONTEND_IMAGE__
+    container_name: fnos-livestreamrecorder-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "38088:80"

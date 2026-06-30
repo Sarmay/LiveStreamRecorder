@@ -1,0 +1,30 @@
+{
+    "docker-project": {
+        "projects": [
+            {
+                "name": "App.Docker.LiveStreamRecorder",
+                "path": "docker"
+            }
+        ]
+    },
+    "data-share": {
+        "shares": [
+            {
+                "name": "App.Docker.LiveStreamRecorder",
+                "permission": {
+                    "rw": [
+                        "lsrecorder"
+                    ]
+                }
+            },
+            {
+                "name": "App.Docker.LiveStreamRecorder/recordings",
+                "permission": {
+                    "rw": [
+                        "lsrecorder"
+                    ]
+                }
+            }
+        ]
+    }
+}

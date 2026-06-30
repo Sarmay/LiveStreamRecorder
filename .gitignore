@@ -6,3 +6,4 @@ backend/recordings/
 recordings/
 .DS_Store
 *.log
+*.fpk
