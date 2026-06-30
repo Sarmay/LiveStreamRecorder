@@ -1,9 +1,12 @@
 const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
+  productionSourceMap: false,
   outputDir: 'dist',
-  configureWebpack: {
-    devtool: 'source-map' // 开发环境开启源码映射，生产环境注释掉
+  configureWebpack: config => {
+    if (process.env.NODE_ENV !== 'production') {
+      config.devtool = 'source-map'
+    }
   },
   devServer: {
     port: 8080,

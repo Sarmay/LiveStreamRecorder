@@ -3,60 +3,69 @@ const router = express.Router();
 const recordingManager = require('../utils/recordingManager');
 const cronManager = require('../utils/cronManager');
 
+const wsClients = new Set();
 
-let recordingStatus = {
-  current: null,
-  progress: []
+const broadcastSocket = {
+  get readyState () {
+    return wsClients.size > 0 ? 1 : 0;
+  },
+  send (message) {
+    wsClients.forEach(client => {
+      if (client.readyState === 1) {
+        client.send(message);
+      }
+    });
+  }
 };
 
-let schedules = [];
-
-let wxClient = null;
-
 router.ws("/ws", (ws, req) => {
-  wxClient = ws;
+  wsClients.add(ws);
   console.log("WebSocket连接成功");
 
   // 更新所有活动录音任务的WebSocket连接
-  recordingManager.updateWebSocketConnections(ws);
+  recordingManager.updateWebSocketConnections(broadcastSocket);
 
   ws.send("pong");
 
   ws.on("message", function (msg) {
-    if (wxClient && wxClient.readyState === 1) {
-      wxClient.send("pong"); // 发送消息
+    if (ws.readyState === 1) {
+      ws.send("pong"); // 发送消息
     }
   });
 
   ws.on("ping", function () {
-    if (wxClient && wxClient.readyState === 1) {
-      wxClient.send("pong"); // 发送 pong 响应
+    if (ws.readyState === 1) {
+      ws.send("pong"); // 发送 pong 响应
     }
   });
 
   ws.on("close", function () {
     console.log("连接关闭");
-    wxClient = null; // 清空 wxClient
+    wsClients.delete(ws);
   });
 
   ws.on("error", function (error) {
     console.error("WebSocket错误:", error);
-    wxClient = null; // 清空 wxClient
+    wsClients.delete(ws);
   });
 });
 
 // start-recording
 router.post('/start-recording', async function (req, res, next) {
   const { url, name } = req.body;
-  if (wxClient) {
-    await recordingManager.startRecording({ url, name }, wxClient);
-    res.success(null, 'Recording started');
-  } else {
-    res.json({
+  if (!url) {
+    return res.status(400).json({
       code: 400,
-      message: 'WebSocket not connected',
+      message: '直播地址不能为空',
       data: null
     });
+  }
+
+  try {
+    const recording = await recordingManager.startRecording({ url, name }, broadcastSocket);
+    res.success(recording, 'Recording started');
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -93,23 +102,26 @@ router.post('/remove-completed-recordings', (req, res) => {
 
 
 
-router.post('/add-schedule', async (req, res) => {
-  if (wxClient) {
-    const schedule = await cronManager.addSchedule(req.body, wxClient);
-    res.success(schedule);
-  } else {
-    res.json({
+router.post('/add-schedule', async (req, res, next) => {
+  if (!req.body.url || !req.body.startTime) {
+    return res.status(400).json({
       code: 400,
-      message: 'WebSocket not connected',
+      message: '请填写直播地址和开始时间',
       data: null
     });
+  }
+
+  try {
+    const schedule = await cronManager.addSchedule(req.body, broadcastSocket);
+    res.success(schedule);
+  } catch (error) {
+    next(error);
   }
 });
 
 router.post('/remove-schedule', (req, res) => {
   const { id } = req.body;
   const result = cronManager.removeSchedule(id);
-  schedules = schedules.filter(s => s.id !== id);
   res.success(result);
 });
 

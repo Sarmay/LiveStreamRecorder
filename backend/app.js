@@ -20,7 +20,7 @@ app.use('/recordings', express.static(path.join(__dirname, 'recordings')));
 // 同时支持/api/recordings路径，解决前端可能添加/api前缀的问题
 app.use('/api/recordings', express.static(path.join(__dirname, 'recordings')));
 
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 
 // 统一响应中间件
 app.use("*", (req, res, next) => {
@@ -106,8 +106,9 @@ app.use("*", async (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    code: 500,
+  const status = err.status || 500;
+  res.status(status).json({
+    code: status,
     message: err.message,
     data: null
   });

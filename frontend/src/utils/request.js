@@ -49,7 +49,6 @@ service.interceptors.request.use(
     // 请求拦截错误处理
     loadingInstance && loadingInstance.close()
     Message.error('请求配置异常，请稍后重试')
-    console.error('请求拦截错误：', error)
     return Promise.reject(error)
   }
 )
@@ -79,13 +78,11 @@ service.interceptors.response.use(
     }
   },
   (error) => {
-    console.log('响应拦截错误：', error)
     // 关闭 loading
     loadingInstance && loadingInstance.close()
 
     // 取消请求的特殊处理
     if (axios.isCancel(error)) {
-      console.log('请求已取消：', error.message)
       return Promise.reject(error)
     }
 
@@ -140,10 +137,9 @@ service.interceptors.response.use(
         break
       default:
         // 其他状态码，显示后端返回的错误信息
-        Message.error(data.msg || `请求失败，状态码：${status}`)
+        Message.error((data && (data.msg || data.message)) || `请求失败，状态码：${status}`)
     }
 
-    console.error('响应拦截错误：', error)
     return Promise.reject(error)
   }
 )

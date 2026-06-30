@@ -1,12 +1,45 @@
 const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const moment = require('moment');
 
 const recordingsDir = path.join(__dirname, '../recordings');
 
 const recordings = new Map();
+
+function sanitizeRecordingName (name, fallback = 'recording') {
+  const normalizedName = String(name || '').trim().normalize('NFKC');
+  const safeName = normalizedName
+    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, '_')
+    .replace(/\.+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+
+  return safeName || fallback;
+}
+
+function getSafeRecordingFilePath (filename) {
+  const resolvedDir = path.resolve(recordingsDir);
+  const resolvedPath = path.resolve(recordingsDir, filename);
+
+  if (!resolvedPath.startsWith(resolvedDir + path.sep)) {
+    throw new Error('Invalid recording file path');
+  }
+
+  return resolvedPath;
+}
+
+function getSafeRecordingIdFilePath (id) {
+  const safeId = String(id || '');
+
+  if (!safeId || safeId.includes('/') || safeId.includes('\\') || safeId.includes('\0') || safeId.includes('..')) {
+    return null;
+  }
+
+  return getSafeRecordingFilePath(`${safeId}.mp4`);
+}
 
 function createRecordingsDir () {
   if (!fs.existsSync(recordingsDir)) {
@@ -19,12 +52,14 @@ async function startRecording (config, ws) {
   const { v4: uuidv4 } = await import('uuid');
   const id = uuidv4();
   const startTime = moment().format('YYYY-MM-DD_HH-mm-ss');
-  const filename = `${config.name || 'recording'}_${startTime}.mp4`;
-  const outputPath = path.join(recordingsDir, filename);
+  const displayName = String(config.name || '').trim() || 'Recording';
+  const safeName = sanitizeRecordingName(config.name);
+  const filename = `${safeName}_${startTime}.mp4`;
+  const outputPath = getSafeRecordingFilePath(filename);
 
   const recording = {
     id,
-    name: config.name || 'Recording',
+    name: displayName,
     url: config.url,
     outputPath,
     filename,
@@ -44,7 +79,7 @@ async function startRecording (config, ws) {
       console.log(`FFmpeg started: ${commandLine}`);
       const currentRecording = {
         id,
-        name: config.name || 'started',
+        name: displayName,
         url: config.url,
         outputPath,
         filename,
@@ -250,8 +285,15 @@ function getCompletedRecordings () {
         let duration = 0;
         try {
           // 使用ffprobe命令获取视频时长
-          const cmd = `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${filePath}"`;
-          const output = execSync(cmd, { encoding: 'utf8' }).trim();
+          const output = execFileSync('ffprobe', [
+            '-v',
+            'quiet',
+            '-show_entries',
+            'format=duration',
+            '-of',
+            'csv=p=0',
+            filePath
+          ], { encoding: 'utf8' }).trim();
           duration = Math.round(parseFloat(output));
         } catch (error) {
           console.error('Error getting video duration:', error.message);
@@ -282,7 +324,11 @@ function getCompletedRecordings () {
 }
 
 function removeCompletedRecordings (id) {
-  const filePath = path.join(recordingsDir, `${id}.mp4`);
+  const filePath = getSafeRecordingIdFilePath(id);
+  if (!filePath) {
+    return { success: false, message: 'Invalid recording id' };
+  }
+
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }

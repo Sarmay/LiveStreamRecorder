@@ -58,8 +58,7 @@ class WebSocketClient {
 
     // 校验URL
     if (!this.config.url) {
-      console.error('WebSocket 连接失败：URL不能为空')
-      this.config.onError('URL不能为空')
+      this.config.onError(new Error('URL不能为空'))
       return
     }
 
@@ -71,7 +70,6 @@ class WebSocketClient {
       this.ws.onopen = (event) => {
         this.isConnected = true
         this.reconnectCount = 0 // 重置重连次数
-        console.log('WebSocket 连接成功')
 
         // 启动心跳检测
         this.startHeartbeat()
@@ -88,7 +86,6 @@ class WebSocketClient {
           }
           if (event.data === this.config.heartbeatResponseMsg) {
             // 心跳响应，不处理业务逻辑
-            console.log('收到心跳响应：', event.data)
             return
           }
           // 尝试解析JSON格式消息，兼容普通文本
@@ -102,7 +99,6 @@ class WebSocketClient {
       // 连接关闭回调
       this.ws.onclose = (event) => {
         this.isConnected = false
-        console.log('WebSocket 连接关闭', event)
 
         // 清除定时器
         this.clearTimer()
@@ -117,13 +113,11 @@ class WebSocketClient {
       // 错误回调
       this.ws.onerror = (error) => {
         this.isConnected = false
-        console.error('WebSocket 连接错误', error)
 
         // 执行用户回调
         this.config.onError(error)
       }
     } catch (error) {
-      console.error('WebSocket 初始化失败', error)
       this.config.onError(error)
       this.reconnect()
     }
@@ -151,7 +145,6 @@ class WebSocketClient {
    */
   send (data) {
     if (!this.isConnected || !this.ws) {
-      console.error('WebSocket 未连接，发送消息失败')
       return false
     }
 
@@ -161,7 +154,6 @@ class WebSocketClient {
       this.ws.send(sendData)
       return true
     } catch (error) {
-      console.error('WebSocket 发送消息失败', error)
       return false
     }
   }
@@ -178,13 +170,11 @@ class WebSocketClient {
     // 判断是否需要重连
     const { reconnectTimes, reconnectInterval } = this.config
     if (reconnectTimes === 0 || (reconnectTimes > 0 && this.reconnectCount >= reconnectTimes)) {
-      console.error(`WebSocket 重连次数已达上限（${reconnectTimes}次），停止重连`)
       return
     }
 
     // 重连计数+1
     this.reconnectCount++
-    console.log(`WebSocket 准备重连（第${this.reconnectCount}次），间隔${reconnectInterval}ms`)
 
     // 定时重连
     this.reconnectTimer = setTimeout(() => {
@@ -240,7 +230,6 @@ class WebSocketClient {
     }
 
     this.isConnected = false
-    console.log('WebSocket 手动关闭连接')
   }
 }
 

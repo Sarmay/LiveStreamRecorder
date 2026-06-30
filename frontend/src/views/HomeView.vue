@@ -44,7 +44,7 @@
               </el-form-item>
               <el-form-item label="重复录制">
                 <el-switch v-model="scheduleForm.isRecurring"></el-switch>
-                <span style="margin-left: 10px;">每日同一时间录制</span>
+                <span style="margin-left: 10px;">每周同一时间录制</span>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="addSchedule">添加定时任务</el-button>
@@ -161,6 +161,9 @@ export default {
     if (this.statusCheckInterval) {
       clearInterval(this.statusCheckInterval)
     }
+    if (this.ws) {
+      this.ws.close(true)
+    }
   },
   methods: {
     formatTime (row, column) {
@@ -245,6 +248,9 @@ export default {
       // 处理错误消息
       if (message.type === 'RECORDING_ERROR') {
         this.$message.error(message.payload.error)
+        this.currentRecording = null
+        this.isRecording = false
+        this.loadCompletedRecordings()
         /*
           payload: {
         id: "c0c0a05d-fcb0-4024-be31-634d2f1ec8bc"
@@ -258,6 +264,9 @@ export default {
       // 处理完成消息
       if (message.type === 'RECORDING_COMPLETED') {
         this.$message.success('录制已完成')
+        this.currentRecording = null
+        this.isRecording = false
+        this.loadCompletedRecordings()
         /*
         payload: {
         duration: "00:00:10.17"
@@ -310,8 +319,9 @@ export default {
 
       // 处理停止消息
       if (message.type === 'RECORDING_STOPPED') {
-        this.currentRecording = message.payload
-        this.isRecording = true
+        this.currentRecording = null
+        this.isRecording = false
+        this.loadCompletedRecordings()
         /*
         payload: {
         duration: "00:00:10.17"
@@ -325,8 +335,7 @@ export default {
 
       // 处理定时任务添加消息
       if (message.type === 'SCHEDULE_ADDED') {
-        this.$message.success('定时任务已添加')
-        this.schedules.push(message.payload)
+        this.upsertSchedule(message.payload)
         /*
         payload: {
             "id": "155bd40a-8139-4468-b08c-df3ea35d22b9",
@@ -356,19 +365,22 @@ export default {
         return
       }
       // 验证地址是否为FLV或HLS格式
-      await startRecording({
+      const recording = await startRecording({
         url: this.recordForm.url,
         name: this.recordForm.name
       })
+      if (recording) {
+        this.currentRecording = recording
+        this.isRecording = true
+      }
       this.recordForm.url = ''
       this.recordForm.name = ''
     },
     async stopRecordingHandel () {
       if (this.currentRecording) {
-        const response = await stopRecording({
+        await stopRecording({
           id: this.currentRecording.id
         })
-        console.log(response)
         this.$message.success('录制已停止')
         this.currentRecording = null
         this.isRecording = false
@@ -376,8 +388,19 @@ export default {
     },
     async loadCompletedRecordings () {
       const response = await getCompletedRecordings()
-      console.log(response)
       this.completedRecordings = response
+    },
+    upsertSchedule (schedule) {
+      if (!schedule || !schedule.id) {
+        return
+      }
+
+      const index = this.schedules.findIndex(item => item.id === schedule.id)
+      if (index >= 0) {
+        this.$set(this.schedules, index, schedule)
+      } else {
+        this.schedules.push(schedule)
+      }
     },
     async addSchedule () {
       if (!this.scheduleForm.url || !this.scheduleForm.startTime) {
@@ -392,9 +415,8 @@ export default {
         isRecurring: this.scheduleForm.isRecurring
       })
 
-      console.log(response)
       this.$message.success('定时任务已添加')
-      this.schedules.push(response.schedule)
+      this.upsertSchedule(response)
       this.scheduleForm = {
         url: '',
         name: '',
@@ -409,10 +431,9 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(async () => {
-        const response = await removeSchedule({
+        await removeSchedule({
           id
         })
-        console.log(response)
         this.schedules = this.schedules.filter(s => s.id !== id)
         this.$message.success('定时任务已删除')
       }).catch(() => { })
@@ -427,10 +448,9 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(async () => {
-        const response = await removeCompleted({
+        await removeCompleted({
           id
         })
-        console.log(response)
         this.completedRecordings = this.completedRecordings.filter(r => r.id !== id)
         this.$message.success('已完成录制已删除')
       }).catch(() => { })

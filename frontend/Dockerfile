@@ -2,16 +2,21 @@
 FROM node:18-alpine as builder
 WORKDIR /app
 
+ARG VUE_APP_BASE_API
+ARG VUE_APP_WS_API
+ENV VUE_APP_BASE_API=$VUE_APP_BASE_API
+ENV VUE_APP_WS_API=$VUE_APP_WS_API
+
 # 1. 复制包管理文件（利用 Docker 缓存，优先安装依赖）
-COPY package.json ./
+COPY package.json yarn.lock ./
 # 添加国内 npm 源加速依赖安装（可选，解决安装慢的问题）
-RUN yarn config set registry https://registry.npmmirror.com && yarn install
+RUN yarn config set registry https://registry.npmmirror.com && yarn install --frozen-lockfile
 
 # 2. 关键修复：复制整个项目源码（包含 src、public 等目录）
 COPY . .
 
 # 3. 执行构建命令
-RUN yarn lint --fix && yarn run build
+RUN yarn lint && yarn run build
 
 # 部署阶段：使用 nginx 镜像
 FROM nginx:alpine as final

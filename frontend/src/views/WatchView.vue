@@ -4,10 +4,6 @@
 
 <script>
 import 'xgplayer/dist/index.min.css'
-import Player from 'xgplayer'
-import HlsJsPlayer from 'xgplayer-hls.js'
-import FlvPlayer from 'xgplayer-flv.js'
-import ShakaJsPlayer from 'xgplayer-shaka'
 import posterImg from '@/assets/poster.jpg'
 
 export default {
@@ -17,30 +13,35 @@ export default {
       url: '',
       width: window.innerWidth,
       height: window.innerHeight,
-      poster: posterImg
+      poster: posterImg,
+      player: null
     }
   },
-  mounted () {
+  async mounted () {
     const url = decodeURIComponent(this.$route.query.url)
     const isLive = this.$route.query.isLive === 'true'
-    console.log(url, isLive)
     // 判断链接是 hls协议还是flv协议
     const isHls = url.startsWith('http') && url.includes('.m3u8')
     const isFlv = url.startsWith('rtmp') || url.startsWith('rtsp') || (url.startsWith('http') && url.includes('.flv'))
     const isShaka = url.startsWith('http') && url.includes('.m4v')
 
-    const playerPlugins = []
+    const playerPluginImports = []
     if (isHls) {
-      playerPlugins.push(HlsJsPlayer)
+      playerPluginImports.push(import('xgplayer-hls.js').then(module => module.default))
     }
     if (isFlv) {
-      playerPlugins.push(FlvPlayer)
+      playerPluginImports.push(import('xgplayer-flv.js').then(module => module.default))
     }
     if (isShaka) {
-      playerPlugins.push(ShakaJsPlayer)
+      playerPluginImports.push(import('xgplayer-shaka').then(module => module.default))
     }
 
-    const player = new Player({
+    const [{ default: Player }, playerPlugins] = await Promise.all([
+      import('xgplayer'),
+      Promise.all(playerPluginImports)
+    ])
+
+    this.player = new Player({
       id: 'mse',
       url: url,
       isLive: isLive,
@@ -53,7 +54,12 @@ export default {
       width: window.innerWidth,
       height: window.innerHeight
     })
-    console.log(player)
+  },
+  beforeDestroy () {
+    if (this.player) {
+      this.player.destroy()
+      this.player = null
+    }
   }
 }
 </script>

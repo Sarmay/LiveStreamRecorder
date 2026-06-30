@@ -28,7 +28,7 @@ RUN yarn config set registry https://registry.npmmirror.com \
     && npm config set registry https://registry.npmmirror.com \
     && yarn config set network-timeout 300000 \
     && yarn cache clean \
-    && yarn install --force --production --ignore-optional
+    && yarn install --frozen-lockfile --production --ignore-optional
 
 # 完整复制项目源码（包括配置/路由等）
 COPY . .

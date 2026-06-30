@@ -38,7 +38,7 @@
 
 ```bash
 # 克隆项目
-cd live-recorder
+cd LiveStreamRecorder
 
 # 构建并启动容器
 docker-compose up -d
@@ -47,7 +47,8 @@ docker-compose up -d
 docker-compose logs -f
 
 # 访问应用
-# 浏览器打开: http://localhost:3000
+# 前端页面: http://localhost:8088
+# 后端 API: http://localhost:3009
 ```
 
 ### 方法二：手动运行
@@ -61,24 +62,20 @@ docker-compose logs -f
 
 ```bash
 # 1. 克隆项目
-cd live-recorder
+cd LiveStreamRecorder
 
-# 2. 安装后端依赖
-npm install
+# 2. 安装并启动后端
+cd backend
+yarn install
+yarn start
 
-# 3. 安装前端依赖
-cd client
-npm install
+# 3. 新开终端，安装并启动前端开发服务
+cd frontend
+yarn install
+yarn dev
 
-# 4. 构建前端
-npm run build
-
-# 5. 返回根目录并启动服务
-cd ..
-npm start
-
-# 或开发模式
-npm run dev
+# 4. 浏览器打开
+# http://localhost:8080
 ```
 
 ## 使用说明
@@ -102,37 +99,36 @@ npm run dev
 
 ### 录制文件存储
 
-录制的文件存储在 Docker 卷 `recordings` 中，或本地 `recordings/` 目录。
+Docker Compose 部署时，录制文件存储在本地 `recordings/` 目录并挂载到容器 `/app/recordings`。
+手动运行后端时，录制文件默认存储在 `backend/recordings/` 目录。
 
 要访问录制的文件：
 
 ```bash
-# Docker 方式
-docker cp live-recorder:/app/recordings/<filename> ./
+# Docker Compose 方式
+ls recordings
 
-# 或直接挂载到本地目录（修改 docker-compose.yml）
-volumes:
-  - ./my-recordings:/app/recordings
+# 手动运行方式
+ls backend/recordings
 ```
 
 ## 项目结构
 
 ```
-live-recorder/
-├── server/                 # 后端代码
-│   ├── index.js           # Express 主入口
-│   ├── recordingManager.js # 录制管理模块
-│   └── cronManager.js      # 定时任务管理
-├── client/                # 前端代码
+LiveStreamRecorder/
+├── backend/               # 后端代码
+│   ├── app.js             # Express 主入口
+│   ├── routes/            # API / WebSocket 路由
+│   └── utils/             # 录制与定时任务管理
+├── frontend/              # 前端代码
 │   ├── src/
 │   │   ├── main.js        # Vue 主入口
 │   │   └── App.vue        # 主组件
 │   ├── public/
 │   └── package.json
 ├── recordings/            # 录制文件存储（Docker 卷）
-├── Dockerfile
 ├── docker-compose.yml
-└── package.json
+└── README.md
 ```
 
 ## API 说明
@@ -142,23 +138,8 @@ live-recorder/
 #### 客户端发送
 
 ```javascript
-// 开始录制
-{ type: 'START_RECORDING', payload: { url, name } }
-
-// 停止录制
-{ type: 'STOP_RECORDING', payload: { id } }
-
-// 添加定时任务
-{ type: 'ADD_SCHEDULE', payload: { url, name, startTime, endTime, isRecurring } }
-
-// 删除定时任务
-{ type: 'REMOVE_SCHEDULE', payload: { id } }
-
-// 获取录制列表
-{ type: 'GET_RECORDINGS' }
-
-// 获取定时任务列表
-{ type: 'GET_SCHEDULES' }
+// 心跳
+'ping'
 ```
 
 #### 服务端推送
@@ -183,8 +164,29 @@ live-recorder/
 ### REST API
 
 ```bash
+# 开始录制
+POST /api/start-recording
+
+# 停止录制
+POST /api/stop-recording
+
 # 获取录制列表
 GET /api/recordings
+
+# 获取录制状态
+GET /api/recording-status
+
+# 获取已完成录制
+GET /api/completed-recordings
+
+# 删除已完成录制
+POST /api/remove-completed-recordings
+
+# 添加定时任务
+POST /api/add-schedule
+
+# 删除定时任务
+POST /api/remove-schedule
 
 # 获取定时任务列表
 GET /api/schedules
@@ -198,12 +200,14 @@ GET /api/schedules
 |--------|------|--------|
 | PORT | 服务端口 | 3000 |
 | NODE_ENV | 运行环境 | production |
+| VUE_APP_BASE_API | 前端构建时使用的后端 API 地址 | 当前访问主机的 3009 端口 |
+| VUE_APP_WS_API | 前端构建时使用的 WebSocket 地址 | 当前访问主机的 3009 端口 `/api/ws` |
 
 ## 常见问题
 
 ### Q: 录制的文件在哪里？
 
-A: Docker 部署时，文件存储在 Docker 卷中。可以通过 `docker cp` 命令复制到本地，或修改 `docker-compose.yml` 将卷挂载到本地目录。
+A: Docker Compose 部署时，文件在项目根目录的 `recordings/`。手动运行后端时，文件在 `backend/recordings/`。
 
 ### Q: 关闭页面后录制会停止吗？
 
@@ -222,7 +226,7 @@ docker-compose logs -f
 ### Q: 如何更新应用？
 
 ```bash
-docker-compose pull
+docker-compose build
 docker-compose up -d
 ```
 

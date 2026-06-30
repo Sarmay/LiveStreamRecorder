@@ -4,6 +4,47 @@ const recordingManager = require('./recordingManager');
 
 const schedules = new Map();
 
+function createValidationError (message) {
+  const error = new Error(message);
+  error.status = 400;
+  return error;
+}
+
+function toResponseSchedule (schedule) {
+  return {
+    id: schedule.id,
+    name: schedule.name,
+    url: schedule.url,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    isRecurring: schedule.isRecurring,
+    status: schedule.status
+  };
+}
+
+function addStopTimer (schedule, recording, delay) {
+  if (!delay || delay <= 0) {
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    schedule.stopTimers.delete(timer);
+    recordingManager.stopRecording(recording.id);
+  }, delay);
+
+  schedule.stopTimers.add(timer);
+}
+
+async function startScheduledRecording (schedule, ws, stopDelay) {
+  const recording = await recordingManager.startRecording({
+    url: schedule.url,
+    name: schedule.name
+  }, ws);
+
+  addStopTimer(schedule, recording, stopDelay);
+  return recording;
+}
+
 async function addSchedule (config, ws) {
   const { v4: uuidv4 } = await import('uuid');
   const id = uuidv4();
@@ -12,86 +53,16 @@ async function addSchedule (config, ws) {
   const endTime = config.endTime ? moment(config.endTime) : null;
   const now = moment();
 
-  let job;
+  if (!startTime.isValid()) {
+    throw createValidationError('开始时间无效');
+  }
 
-  // 任务是否在过期时间之前
-  const isPast = startTime.isBefore(now);
+  if (endTime && (!endTime.isValid() || !endTime.isAfter(startTime))) {
+    throw createValidationError('结束时间必须晚于开始时间');
+  }
 
-  if (config.isRecurring) {
-    const cronTime = `${startTime.second()} ${startTime.minute()} ${startTime.hour()} * * ${startTime.day()}`;
-    console.log('创建带有cron时间的重复作业:', cronTime);
-
-    job = new CronJob(cronTime, async () => {
-      console.log('重复作业触发:', id);
-      const recording = await recordingManager.startRecording({
-        url: config.url,
-        name: config.name
-      }, ws);
-
-      if (endTime) {
-        const duration = endTime.diff(startTime, 'minutes');
-        console.log('重复作业过期时间:', duration, '分钟');
-        setTimeout(() => {
-          recordingManager.stopRecording(recording.id);
-        }, duration * 60 * 1000);
-      }
-    });
-
-    // 如果任务在过期时间之前，立即运行
-    if (isPast) {
-      console.log('任务立即运行:', id);
-      const recording = await recordingManager.startRecording({
-        url: config.url,
-        name: config.name
-      }, ws);
-
-      if (endTime) {
-        const duration = endTime.diff(now, 'milliseconds');
-        if (duration > 0) {
-          console.log('任务过期时间:', duration, '毫秒');
-          setTimeout(() => {
-            recordingManager.stopRecording(recording.id);
-          }, duration);
-        }
-      }
-    }
-  } else {
-    const delay = startTime.diff(now, 'milliseconds');
-    console.log('任务延迟时间:', delay, '毫秒');
-
-    if (delay > 0) {
-      setTimeout(async () => {
-        console.log('任务触发:', id);
-        const recording = await recordingManager.startRecording({
-          url: config.url,
-          name: config.name
-        }, ws);
-
-        if (endTime) {
-          const duration = endTime.diff(moment(), 'milliseconds');
-          console.log('任务过期时间:', duration, '毫秒');
-          setTimeout(() => {
-            recordingManager.stopRecording(recording.id);
-          }, duration);
-        }
-      }, delay);
-    } else {
-      console.log('任务立即运行:', id);
-      const recording = await recordingManager.startRecording({
-        url: config.url,
-        name: config.name
-      }, ws);
-
-      if (endTime) {
-        const duration = endTime.diff(now, 'milliseconds');
-        if (duration > 0) {
-          console.log('任务过期时间:', duration, '毫秒');
-          setTimeout(() => {
-            recordingManager.stopRecording(recording.id);
-          }, duration);
-        }
-      }
-    }
+  if (!config.isRecurring && endTime && endTime.isBefore(now)) {
+    throw createValidationError('结束时间不能早于当前时间');
   }
 
   const schedule = {
@@ -102,26 +73,59 @@ async function addSchedule (config, ws) {
     endTime: config.endTime,
     isRecurring: config.isRecurring || false,
     status: 'active',
-    job
+    job: null,
+    startTimer: null,
+    stopTimers: new Set()
   };
-
-  if (job) {
-    console.log('重复作业启动:', id);
-    job.start();
-  }
 
   schedules.set(id, schedule);
+
+  if (config.isRecurring) {
+    const cronTime = `${startTime.second()} ${startTime.minute()} ${startTime.hour()} * * ${startTime.day()}`;
+    console.log('创建带有cron时间的重复作业:', cronTime);
+
+    schedule.job = new CronJob(cronTime, async () => {
+      console.log('重复作业触发:', id);
+      const duration = endTime ? endTime.diff(startTime, 'milliseconds') : null;
+      await startScheduledRecording(schedule, ws, duration);
+    });
+
+    // 如果任务在过期时间之前，立即运行
+    if (startTime.isBefore(now) && (!endTime || endTime.isAfter(now))) {
+      console.log('任务立即运行:', id);
+      const duration = endTime ? endTime.diff(now, 'milliseconds') : null;
+      await startScheduledRecording(schedule, ws, duration);
+    }
+  } else {
+    const delay = startTime.diff(now, 'milliseconds');
+    console.log('任务延迟时间:', delay, '毫秒');
+
+    if (delay > 0) {
+      schedule.startTimer = setTimeout(async () => {
+        schedule.startTimer = null;
+        if (!schedules.has(id)) {
+          return;
+        }
+
+        console.log('任务触发:', id);
+        const duration = endTime ? endTime.diff(moment(), 'milliseconds') : null;
+        await startScheduledRecording(schedule, ws, duration);
+      }, delay);
+    } else {
+      console.log('任务立即运行:', id);
+      const duration = endTime ? endTime.diff(now, 'milliseconds') : null;
+      await startScheduledRecording(schedule, ws, duration);
+    }
+  }
+
+  if (schedule.job) {
+    console.log('重复作业启动:', id);
+    schedule.job.start();
+  }
+
   console.log('任务添加成功:', id);
 
-  const responseSchedule = {
-    id,
-    name: schedule.name,
-    url: schedule.url,
-    startTime: schedule.startTime,
-    endTime: schedule.endTime,
-    isRecurring: schedule.isRecurring,
-    status: schedule.status
-  };
+  const responseSchedule = toResponseSchedule(schedule);
 
   if (ws) {
     ws.send(JSON.stringify({
@@ -143,21 +147,18 @@ function removeSchedule (id) {
     schedule.job.stop();
   }
 
+  if (schedule.startTimer) {
+    clearTimeout(schedule.startTimer);
+    schedule.startTimer = null;
+  }
+
   schedules.delete(id);
 
   return { success: true, message: '任务删除成功'  };
 }
 
 function getAllSchedules () {
-  return Array.from(schedules.values()).map(schedule => ({
-    id: schedule.id,
-    name: schedule.name,
-    url: schedule.url,
-    startTime: schedule.startTime,
-    endTime: schedule.endTime,
-    isRecurring: schedule.isRecurring,
-    status: schedule.status
-  }));
+  return Array.from(schedules.values()).map(toResponseSchedule);
 }
 
 module.exports = {
