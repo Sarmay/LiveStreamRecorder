@@ -220,7 +220,7 @@ GET /api/schedules
 
 ```bash
 VERSION=1.0.0 \
-IMAGE_NAMESPACE=ghcr.io/sarmay \
+IMAGE_NAMESPACE=sarmay \
 IMAGE_PREFIX=livestreamrecorder \
 scripts/build-fnos-package.sh
 ```
@@ -238,12 +238,17 @@ git push origin v1.0.0
 
 流程会自动：
 
-1. 构建并推送后端镜像到 GHCR
-2. 构建并推送前端镜像到 GHCR
+1. 构建并推送后端镜像到 Docker Hub
+2. 构建并推送前端镜像到 Docker Hub
 3. 将 tag 版本写入 `fnos/manifest`
 4. 将对应镜像 tag 写入 `fnos/app/docker/docker-compose.yaml`
 5. 使用 `fnpack` 构建 `.fpk`
 6. 将 `.fpk` 上传到 GitHub Release
+
+发布前需要在 GitHub 仓库 Secrets 中配置：
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
 
 ## 常见问题
 

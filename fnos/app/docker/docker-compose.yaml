@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/sarmay/livestreamrecorder-backend:1.0.1
+    image: sarmay/livestreamrecorder-backend:1.0.2
     container_name: fnos-livestreamrecorder-backend
     restart: unless-stopped
     environment:
@@ -10,7 +10,7 @@ services:
       - /var/apps/App.Docker.LiveStreamRecorder/shares/App.Docker.LiveStreamRecorder/recordings:/app/recordings
 
   frontend:
-    image: ghcr.io/sarmay/livestreamrecorder-frontend:1.0.1
+    image: sarmay/livestreamrecorder-frontend:1.0.2
     container_name: fnos-livestreamrecorder-frontend
     restart: unless-stopped
     depends_on:

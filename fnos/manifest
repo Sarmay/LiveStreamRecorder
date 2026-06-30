@@ -1,5 +1,5 @@
 appname               = App.Docker.LiveStreamRecorder
-version               = 1.0.1
+version               = 1.0.2
 display_name          = Live Stream Recorder
 desc                  = 基于 Docker 的直播录制应用，支持 FLV、HLS、RTMP 直播流录制、定时任务和实时状态监控。
 platform              = all

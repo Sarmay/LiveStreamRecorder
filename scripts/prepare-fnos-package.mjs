@@ -30,7 +30,7 @@ function normalizeImageName (value) {
 }
 
 const version = normalizeVersion(readArg('version', process.env.VERSION))
-const imageNamespace = normalizeImageName(readArg('image-namespace', process.env.IMAGE_NAMESPACE || 'ghcr.io/sarmay'))
+const imageNamespace = normalizeImageName(readArg('image-namespace', process.env.IMAGE_NAMESPACE || 'sarmay'))
 const imagePrefix = normalizeImageName(readArg('image-prefix', process.env.IMAGE_PREFIX || 'livestreamrecorder'))
 const backendImage = normalizeImageName(readArg('backend-image', process.env.BACKEND_IMAGE || `${imageNamespace}/${imagePrefix}-backend`))
 const frontendImage = normalizeImageName(readArg('frontend-image', process.env.FRONTEND_IMAGE || `${imageNamespace}/${imagePrefix}-frontend`))

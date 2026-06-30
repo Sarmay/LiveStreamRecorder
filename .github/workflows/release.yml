@@ -14,7 +14,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   release:
@@ -34,26 +33,20 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
           fi
 
-          OWNER_LC="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           REPO_LC="$(basename "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-          IMAGE_NAMESPACE="ghcr.io/${OWNER_LC}"
           IMAGE_PREFIX="${REPO_LC}"
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "image_namespace=${IMAGE_NAMESPACE}" >> "$GITHUB_OUTPUT"
           echo "image_prefix=${IMAGE_PREFIX}" >> "$GITHUB_OUTPUT"
-          echo "backend_image=${IMAGE_NAMESPACE}/${IMAGE_PREFIX}-backend" >> "$GITHUB_OUTPUT"
-          echo "frontend_image=${IMAGE_NAMESPACE}/${IMAGE_PREFIX}-frontend" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -61,8 +54,8 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.version }}
-            ${{ steps.meta.outputs.backend_image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.meta.outputs.image_prefix }}-backend:${{ steps.meta.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.meta.outputs.image_prefix }}-backend:latest
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -73,8 +66,8 @@ jobs:
             VUE_APP_BASE_API=same-origin
             VUE_APP_WS_API=same-origin
           tags: |
-            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.version }}
-            ${{ steps.meta.outputs.frontend_image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.meta.outputs.image_prefix }}-frontend:${{ steps.meta.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.meta.outputs.image_prefix }}-frontend:latest
 
       - name: Install fnpack
         shell: bash
@@ -88,7 +81,7 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.meta.outputs.version }}
-          IMAGE_NAMESPACE: ${{ steps.meta.outputs.image_namespace }}
+          IMAGE_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_PREFIX: ${{ steps.meta.outputs.image_prefix }}
         run: |
           scripts/build-fnos-package.sh "$VERSION"
